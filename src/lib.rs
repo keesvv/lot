@@ -25,7 +25,7 @@ impl TryFrom<&str> for Quote {
     type Error = Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let mut quote = value.split_terminator('\n');
+        let mut quote = value.split_terminator("\n- ");
 
         Ok(Self {
             text: quote.next().ok_or(Error::EOI)?.into(),
@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let quote = Quote::try_from("Lorem ipsum dolor sit amet\nLorem Ipsum");
+        let quote = Quote::try_from("Lorem ipsum dolor sit amet\n- Lorem Ipsum");
         assert!(quote.clone().is_ok());
 
         let quote = quote.unwrap();
