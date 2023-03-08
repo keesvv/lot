@@ -1,12 +1,13 @@
 use std::error;
 use std::fmt::{self, Display, Formatter};
 
+#[derive(Debug, Clone)]
 pub struct Quote {
     pub author: Option<String>,
     pub text: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Error {
     EOI,
 }
@@ -35,7 +36,7 @@ impl TryFrom<&str> for Quote {
 
 impl Display for Quote {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(
+        write!(
             f,
             "\"{}\"\n\t- {}",
             self.text,
@@ -45,3 +46,50 @@ impl Display for Quote {
 }
 
 pub trait Quoter: Iterator<Item = Quote> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse() {
+        let quote = Quote::try_from("Lorem ipsum dolor sit amet\nLorem Ipsum");
+        assert!(quote.clone().is_ok());
+
+        let quote = quote.unwrap();
+        assert_eq!(quote.author, Some("Lorem Ipsum".into()));
+        assert_eq!(quote.text, "Lorem ipsum dolor sit amet".to_string());
+    }
+
+    #[test]
+    fn test_parse_invalid() {
+        let quote = Quote::try_from("");
+        assert!(quote.clone().is_err());
+    }
+
+    #[test]
+    fn test_display() {
+        let quote = Quote {
+            author: None,
+            text: "Lorem ipsum dolor sit amet".into(),
+        };
+
+        assert_eq!(
+            quote.to_string(),
+            "\"Lorem ipsum dolor sit amet\"\n\t- Unknown"
+        );
+    }
+
+    #[test]
+    fn test_display_with_author() {
+        let quote = Quote {
+            author: Some("Example Author".into()),
+            text: "Lorem ipsum dolor sit amet".into(),
+        };
+
+        assert_eq!(
+            quote.to_string(),
+            "\"Lorem ipsum dolor sit amet\"\n\t- Example Author"
+        );
+    }
+}
