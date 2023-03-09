@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let quote = Quote::try_from("Lorem ipsum dolor sit amet\n- Lorem Ipsum");
+        let quote = Quote::try_from("Lorem ipsum dolor sit amet\n\t\t-- Lorem Ipsum");
         assert!(quote.clone().is_ok());
 
         let quote = quote.unwrap();
@@ -78,7 +78,7 @@ mod tests {
 
         assert_eq!(
             quote.to_string(),
-            "\"Lorem ipsum dolor sit amet\"\n\t- Unknown"
+            "\u{2018}Lorem ipsum dolor sit amet\u{2019}\n\t\u{2014} Unknown"
         );
     }
 
@@ -91,7 +91,7 @@ mod tests {
 
         assert_eq!(
             quote.to_string(),
-            "\"Lorem ipsum dolor sit amet\"\n\t- Example Author"
+            "\u{2018}Lorem ipsum dolor sit amet\u{2019}\n\t\u{2014} Example Author"
         );
     }
 }
