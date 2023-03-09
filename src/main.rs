@@ -70,8 +70,13 @@ fn reload_quotes() -> Result<(), ReloadError> {
     let mut quotes = Vec::new();
 
     for file in quotes_dir {
-        let entry = file.map_err(ReloadError::IO)?;
-        let content = fs::read_to_string(entry.path()).map_err(ReloadError::IO)?;
+        let file = file.map_err(ReloadError::IO)?;
+
+        if file.path().extension() != Some("txt".as_ref()) {
+            continue;
+        }
+
+        let content = fs::read_to_string(file.path()).map_err(ReloadError::IO)?;
 
         for quote in content.split_terminator("\n\n") {
             quotes.push(Quote::try_from(quote).map_err(ReloadError::Parse)?);
