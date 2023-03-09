@@ -1,5 +1,7 @@
-use std::error;
 use std::fmt::{self, Display, Formatter};
+use std::fs::{self, File};
+use std::path::{Path, PathBuf};
+use std::{error, io};
 
 use serde::{Deserialize, Serialize};
 
@@ -9,16 +11,32 @@ pub struct Quote {
     pub text: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Error {
     EOI,
+    Serialize(bincode::Error),
+    IO(io::Error),
+}
+
+impl From<bincode::Error> for Error {
+    fn from(err: bincode::Error) -> Self {
+        Self::Serialize(err)
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(err: io::Error) -> Self {
+        Self::IO(err)
+    }
 }
 
 impl error::Error for Error {}
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Error::EOI => write!(f, "Unexpected end of input"),
+            Self::EOI => write!(f, "Unexpected end of input"),
+            Self::IO(e) => write!(f, "IO error: {}", e),
+            Self::Serialize(e) => write!(f, "Serialization error: {}", e),
         }
     }
 }
@@ -47,7 +65,48 @@ impl Display for Quote {
     }
 }
 
-pub trait Quoter: Iterator<Item = Quote> {}
+pub struct QuoteManager {
+    cache_path: PathBuf,
+    quotes_path: PathBuf,
+}
+
+impl QuoteManager {
+    pub fn new(quotes_path: &Path, cache_path: &Path) -> Self {
+        Self {
+            cache_path: cache_path.into(),
+            quotes_path: quotes_path.into(),
+        }
+    }
+
+    pub fn rebuild_cache(&self) -> Result<(), Error> {
+        let quotes_dir = fs::read_dir(&self.quotes_path)?;
+        let cache_file = File::create(&self.cache_path)?;
+
+        let mut quotes = Vec::new();
+
+        for file in quotes_dir {
+            let file = file?;
+
+            if file.path().extension() != Some("txt".as_ref()) {
+                continue;
+            }
+
+            let content = fs::read_to_string(file.path())?;
+
+            for quote in content.split_terminator("\n%") {
+                quotes.push(Quote::try_from(quote)?);
+            }
+        }
+
+        bincode::serialize_into(cache_file, &quotes).map_err(Error::Serialize)
+    }
+
+    pub fn get_cached(&self) -> Result<Vec<Quote>, Error> {
+        let cache_file = File::open(&self.cache_path)?;
+
+        bincode::deserialize_from(cache_file).map_err(Error::Serialize)
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -56,7 +115,7 @@ mod tests {
     #[test]
     fn test_parse() {
         let quote = Quote::try_from("Lorem ipsum dolor sit amet\n\t\t-- Lorem Ipsum");
-        assert!(quote.clone().is_ok());
+        assert!(quote.is_ok());
 
         let quote = quote.unwrap();
         assert_eq!(quote.source, Some("Lorem Ipsum".into()));
@@ -66,7 +125,7 @@ mod tests {
     #[test]
     fn test_parse_invalid() {
         let quote = Quote::try_from("");
-        assert!(quote.clone().is_err());
+        assert!(quote.is_err());
     }
 
     #[test]
