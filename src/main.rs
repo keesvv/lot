@@ -9,6 +9,7 @@ use lot::Quote;
 
 use clap::{Parser, Subcommand};
 use directories::ProjectDirs;
+use rand::seq::IteratorRandom;
 
 #[derive(Subcommand)]
 enum Command {
@@ -87,9 +88,18 @@ fn reload_quotes() -> Result<(), ReloadError> {
     Ok(())
 }
 
+fn get_quotes() -> Result<Vec<Quote>, ReloadError> {
+    let cache_file = File::open(Paths::Cache.to_path_buf()).map_err(ReloadError::IO)?;
+
+    bincode::deserialize_from(cache_file).map_err(ReloadError::Serialize)
+}
+
 fn main() {
     match Args::parse().command {
         Some(Command::Reload) => reload_quotes().unwrap(),
-        None => println!("{}", Quote::try_from("Lorem ipsum dolor sit amet").unwrap()),
+        None => {
+            let mut rng = rand::thread_rng();
+            println!("{}", get_quotes().unwrap().iter().choose(&mut rng).unwrap())
+        }
     };
 }
