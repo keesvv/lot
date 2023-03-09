@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Quote {
-    pub author: Option<String>,
+    pub source: Option<String>,
     pub text: String,
 }
 
@@ -31,7 +31,7 @@ impl TryFrom<&str> for Quote {
 
         Ok(Self {
             text: quote.next().ok_or(Error::EOI)?.trim().into(),
-            author: quote.next().map(ToString::to_string),
+            source: quote.next().map(ToString::to_string),
         })
     }
 }
@@ -40,9 +40,9 @@ impl Display for Quote {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "\"{}\"\n\t- {}",
+            "\u{2018}{}\u{2019}\n\t\u{2014} {}",
             self.text,
-            self.author.clone().unwrap_or("Unknown".into())
+            self.source.clone().unwrap_or("Unknown".into())
         )
     }
 }
@@ -59,7 +59,7 @@ mod tests {
         assert!(quote.clone().is_ok());
 
         let quote = quote.unwrap();
-        assert_eq!(quote.author, Some("Lorem Ipsum".into()));
+        assert_eq!(quote.source, Some("Lorem Ipsum".into()));
         assert_eq!(quote.text, "Lorem ipsum dolor sit amet".to_string());
     }
 
@@ -72,7 +72,7 @@ mod tests {
     #[test]
     fn test_display() {
         let quote = Quote {
-            author: None,
+            source: None,
             text: "Lorem ipsum dolor sit amet".into(),
         };
 
@@ -83,9 +83,9 @@ mod tests {
     }
 
     #[test]
-    fn test_display_with_author() {
+    fn test_display_with_source() {
         let quote = Quote {
-            author: Some("Example Author".into()),
+            source: Some("Example Author".into()),
             text: "Lorem ipsum dolor sit amet".into(),
         };
 
