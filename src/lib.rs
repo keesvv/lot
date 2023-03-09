@@ -1,7 +1,9 @@
 use std::error;
 use std::fmt::{self, Display, Formatter};
 
-#[derive(Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Quote {
     pub author: Option<String>,
     pub text: String,
