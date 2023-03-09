@@ -61,35 +61,51 @@ impl Display for ReloadError {
     }
 }
 
-// TODO: replace map_err's with something more elegant
-fn reload_quotes() -> Result<(), ReloadError> {
-    fs::create_dir_all(Paths::CacheDir.to_path_buf()).map_err(ReloadError::IO)?;
+impl From<bincode::Error> for ReloadError {
+    fn from(err: bincode::Error) -> Self {
+        Self::Serialize(err)
+    }
+}
 
-    let cache_file = File::create(Paths::Cache.to_path_buf()).map_err(ReloadError::IO)?;
-    let quotes_dir = fs::read_dir(Paths::QuotesDir.to_path_buf()).map_err(ReloadError::IO)?;
+impl From<lot::Error> for ReloadError {
+    fn from(err: lot::Error) -> Self {
+        Self::Parse(err)
+    }
+}
+
+impl From<io::Error> for ReloadError {
+    fn from(err: io::Error) -> Self {
+        Self::IO(err)
+    }
+}
+
+fn reload_quotes() -> Result<(), ReloadError> {
+    fs::create_dir_all(Paths::CacheDir.to_path_buf())?;
+
+    let cache_file = File::create(Paths::Cache.to_path_buf())?;
+    let quotes_dir = fs::read_dir(Paths::QuotesDir.to_path_buf())?;
 
     let mut quotes = Vec::new();
 
     for file in quotes_dir {
-        let file = file.map_err(ReloadError::IO)?;
+        let file = file?;
 
         if file.path().extension() != Some("txt".as_ref()) {
             continue;
         }
 
-        let content = fs::read_to_string(file.path()).map_err(ReloadError::IO)?;
+        let content = fs::read_to_string(file.path())?;
 
         for quote in content.split_terminator("\n\n") {
-            quotes.push(Quote::try_from(quote).map_err(ReloadError::Parse)?);
+            quotes.push(Quote::try_from(quote)?);
         }
     }
 
-    bincode::serialize_into(cache_file, &quotes).map_err(ReloadError::Serialize)?;
-    Ok(())
+    bincode::serialize_into(cache_file, &quotes).map_err(ReloadError::Serialize)
 }
 
 fn get_quotes() -> Result<Vec<Quote>, ReloadError> {
-    let cache_file = File::open(Paths::Cache.to_path_buf()).map_err(ReloadError::IO)?;
+    let cache_file = File::open(Paths::Cache.to_path_buf())?;
 
     bincode::deserialize_from(cache_file).map_err(ReloadError::Serialize)
 }
