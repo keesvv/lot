@@ -45,6 +45,7 @@ impl Paths {
 #[derive(Debug)]
 enum ReloadError {
     Serialize(bincode::Error),
+    Parse(lot::Error),
     IO(io::Error),
 }
 
@@ -54,25 +55,30 @@ impl Display for ReloadError {
         match self {
             Self::IO(e) => write!(f, "IO error: {}", e),
             Self::Serialize(e) => write!(f, "Serialization error: {}", e),
+            Self::Parse(e) => write!(f, "Parse error: {}", e),
         }
     }
 }
 
+// TODO: replace map_err's with something more elegant
 fn reload_quotes() -> Result<(), ReloadError> {
     fs::create_dir_all(Paths::CacheDir.to_path_buf()).map_err(ReloadError::IO)?;
 
     let cache_file = File::create(Paths::Cache.to_path_buf()).map_err(ReloadError::IO)?;
-    // let quotes_dir = fs::read_dir(Paths::QuotesDir.to_path_buf()).map_err(ReloadError::IO)?;
+    let quotes_dir = fs::read_dir(Paths::QuotesDir.to_path_buf()).map_err(ReloadError::IO)?;
 
-    // TODO: actually collect Vec of quotes
-    bincode::serialize_into(
-        cache_file,
-        &Quote {
-            author: None,
-            text: String::new(),
-        },
-    )
-    .map_err(ReloadError::Serialize)?;
+    let mut quotes = Vec::new();
+
+    for file in quotes_dir {
+        let entry = file.map_err(ReloadError::IO)?;
+        let content = fs::read_to_string(entry.path()).map_err(ReloadError::IO)?;
+
+        for quote in content.split_terminator("\n\n") {
+            quotes.push(Quote::try_from(quote).map_err(ReloadError::Parse)?);
+        }
+    }
+
+    bincode::serialize_into(cache_file, &quotes).map_err(ReloadError::Serialize)?;
     Ok(())
 }
 
