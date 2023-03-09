@@ -27,10 +27,10 @@ impl TryFrom<&str> for Quote {
     type Error = Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let mut quote = value.split_terminator("\n- ");
+        let mut quote = value.split_terminator("\n\t\t-- ");
 
         Ok(Self {
-            text: quote.next().ok_or(Error::EOI)?.into(),
+            text: quote.next().ok_or(Error::EOI)?.trim().into(),
             author: quote.next().map(ToString::to_string),
         })
     }

@@ -96,7 +96,7 @@ fn reload_quotes() -> Result<(), ReloadError> {
 
         let content = fs::read_to_string(file.path())?;
 
-        for quote in content.split_terminator("\n\n") {
+        for quote in content.split_terminator("\n%") {
             quotes.push(Quote::try_from(quote)?);
         }
     }
